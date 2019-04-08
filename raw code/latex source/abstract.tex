@@ -1,0 +1,16 @@
+
+
+\chapter*{Abstract}
+\thispagestyle{empty}	% no page numbering
+
+This project analyzes Massachusetts housing court records, testing if there is ethnic bias in who is evicted.  The project starts with semi-manually scraping court records from the Massachusetts court website.  Because the website disallows fully automatic scraping of records, tools were developed to facilitate and expedite the downloading of data without violating the terms and conditions for the page. \par
+
+With source web pages downloaded, the records were processed to extract eviction features: plaintiffs, defendants, location of eviction, and which housing court.  Largely through format shifting, nearly a gigabyte of records was parsed and pared down to about 20MB stored in a usable data frame.  Incomplete or unparsable records were removed. Once the raw data was processed, addresses were geocoded and turned into census tracts to add probabilities of ethnicity for each record, based on location.  Additionally, last names were matched against census database records to extract the corresponding probabilities of ethnicity based on surname.  These pieces of data were then combined to create a refined estimate of ethnicity for each data point. \par
+
+The estimated ethnicities were compared with the underlying demographics to determine if there was a meaningful difference in evictions between how many people of each ethnicity were evicted, and what should be expected based on the underlying population. Depending on how the model was tested, there were two different results.  Either Caucasians are over-evicted relative to their population, or Hispanics and African Americans are over-evicted relative to their populations.
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "main"
+%%% End: 

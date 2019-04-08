@@ -1,0 +1,16 @@
+
+\chapter{Conclusion}
+\label{chap:conclusion}
+\par Given the BISG assessment of race, it appears that Hispanics and African Americans are significantly over-evicted relative to the Caucasians, Asian and Pacific Islanders, American Indians and Alaskan natives, and Multi-racials.  While original analysis suggested that Caucasians were over-evicted relative to the other ethnic categories, this analysis treated all census tracts equally despite that some census tracts are much larger than others.  Accommodating for the disparity in census tract sizes, the estimation of over-eviction shifted sharply against African Americans and Hispanics.
+
+\par Problems that arose: how to accurately assess the rental population?  Without rental statistics to transform census tract ethnicity breakdown to the relative census tract rental ethnicity breakdown, the national rates of renting had to be used as a proxy.  It is possible that the analysis changes once a more detailed analysis can be done on a tract by tract basis.  
+
+\par The underlying idea of BISG is that it should be used as a Naive Bayes approach assuming that location and surname are independent for a given population.  This may be a reasonable approximation for people receiving healthcare, or for people applying for auto loans, but it isn’t clear how accurate this is for people being evicted from their housing.
+
+\par BISG was intended to improve data imputation as part of a larger analysis of data sets with gaps.  Overestimation of a race in one place, and underestimation in another may very well cancel out in the larger analysis because the larger analysis does not depend on local trends.
+
+\par In contrast, with eviction differentiation, we are directly comparing BISG approximations with the underlying demographic; we are assessing how much the naive Bayes approximation changes the estimation of ethnicity relative to the local demographic.  Given this, the model would benefit from being refined further.  The census surname database gives race proportions for the common last names, but it also gives the absolute proportions of the last names.  There is a compelling reason to think that exceedingly rare last names will play a larger role in estimates of individual ethnicities than the location data.  Similarly, exceedingly common surnames should contribute less to an ethnic profile while location data becomes comparatively more important.  
+
+\par Anyone looking to advance this eviction analysis in the future could spend time in the court surveying how independent the two data components actually are.  Even though the goal here could be described as avoiding time and money intensive data collection in person in favor of mathematical modeling, a small sampling of data to further develop the relationship between features in the model could present a large time and cost savings in the long run if it convincingly examines the relationship between location, surname, and surname frequency.
+
+\par As a final note, anyone who seeks to use this analysis for demonstrating disparate impact should note that the model may be able to show a statistically significant distinction between how different ethnicities are effected, but does not provide a mechanism.  The root cause as to why different ethnicities are evicted at different rates is unknown.

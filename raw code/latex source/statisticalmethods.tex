@@ -1,0 +1,114 @@
+\chapter{Statistical Methods}
+\label{chap:statisticalmethods}
+The three principle methods used in this paper are BISG ethnicity calculations, chi-square tests, and boot-strap and resampling tests.
+
+\par BISG: Bayesian Improved Surname Geocoding.  BISG is an algorithm which takes an estimate of person's ethnicity based on their last name, an estimate of the person's ethnicity based on their place of residence, and uses the two pieces of information together to come up with a Naive Bayes improved third estimate of the person's ethnicity based on the assumption of independence of the two pieces of known information~\citep{BOOK:8}.  Using the Naive Bayes method, you assume the pairwise probabilities are independent, multiply the probabilities, and then normalize the results so they sum to one.
+
+In more detail, to get a first approximation of the ethnicity of someone you have never met, you can use their address.  Using their address, look up the ethnic breakdown of the neighborhood they live in.  Census data is freely available down to the level of census tracts; census tracts range in size from about 1200 to 8000 people, so it’s a fairly local approximation which might encompass as little as a few blocks or a large apartment complex.
+
+\par While location data can give a very good first approximation of someone’s ethnicity, particularly if the census tract heavily features a particular ethnicity (or just minorities in general if you are not distinguishing further than white or non-white), depending on the census tract, location data might just as likely do a poor job distinguishing between different ethnicities.  A census tract that is half white gives you no better than a 50\% chance of correctly guessing if a resident in the census tract is a minority.  As an alternative to using location data, last names serve as plausible means of approximating someone’s ethnicity.  Usefully, last name data is even more accessible than location data, and the census keeps a table of the 150 thousand most prevalent last names and their associated ethnic probabilities.  Given this second approximation of ethnicity based on last name, we multiply the corresponding ethnicity probabilities together, normalize the numbers so they again sum to 1, and use this new estimate as an improvement on the original estimations.
+
+\par As an example, we can try to ascertain the ethnicity of someone with the last name of Williams living at 1000 Massachusetts Ave in Cambridge, MA.  Using the address, 65\% of people in this census tract identified as white, 4.5\% as African American, 0\% American Indian or Alaskan Native, 22\% Asian or Pacific Islander, 5.3\% Hispanic, and 1.1\% identified as being of more than one race.  Note that these probabilities do not sum to one.  Not all recorded data had race reported, and non-reported data functions as the discrepancy between observed race and 100\% tabulation.  (We could normalize these figure so they sum to one and are valid probabilities, but we will wait to make this correction during the normalizing phase at the end of the computations).
+
+\par Next we check the census statistics on people with a last name of “Williams”.  The given surname constitutes .56\% of the U.S. population.  Of that fraction of the population, 48.5\% of people are white, 46.7\% are black, .37\% are Asian or Pacific Islander, .78\% are Alaskan natives or American Indians, 2\% identify as belonging to two or more races, and 1.6\% identify as Hispanic.
+
+\par Looking at either piece of information by itself, we are unlikely to be able to resolve the ethnicity of our random person.  The location data suggests that the individual is white, but does not convincingly rule out Asian or Pacific Islander.  In contrast, the surname data suggests that the individual might be white or African American, but does sufficiently delineate the two options.
+
+\begin{table}
+\centering
+ \begin{tabular}{|c c c c c c c c|}
+ \multicolumn{8}{c}{Table 1: Naive Bayes Example} \\
+ \hline
+  Ethnicity & Cauc. & Afr. Amer. & API & AIAN &Hispanic & Multi&\\ [0.5ex] 
+ \hline
+ Location &.6553 &.0454 &.0000 &.2285 &.0530 &.0113&  \\ 
+ \hline
+ Surname &.4852 &.4672 &.0078 &.0037 &.0160 &.0201&  \\
+ \hline
+ Joint &.3179 &.0212 &.0000 &.0008 &.0008 &.0002&.3411  \\
+ \hline
+ Posterior &.9321 &.0622 &.0000 &.0024 &.0024 &.0006 &  \\
+ \hline
+\end{tabular}
+\caption{Naive Bayes Example}
+\label{tab:table1}
+\end{table}
+
+\par The next step now is to combine these two pieces of information.  Multiplying the corresponding probabilities of ethnicity based on location and surname (in the first two rows of the table above), we calculate what is known as the joint probability.  These computations need to sum to 1, so we will scale them by their combined sum called the marginal probability (the .3411 at the end of the row is the sum of all the values preceding in the row for joint probabilities).  Dividing each ethnicity entry in the row of joint probabilities by .3411, we arrive at the posterior estimate of ethnicity probabilities.  In the above example, we initially had trouble discerning if our unknown individual was white or African American, or white or Asian Pacific Islander, but after combining the two pieces of information we have strong indication that the mystery individual is in fact white.  Given that our data only gives us a probabilistic profile of a person, this is often not a reliable way of predicting a single individual's ethnicity, but it is a reliable way to predict the ethnicity of many individuals, assuming individual errors are smoothed out in aggregate, while improving on historical techniques using just last name or home address information.
+
+\par The second prominent test featured in the analysis is the chi-square test.  The chi-square test provides a means of testing how likely a data set was generated from a specific  from a potential source, taking into account random fluctuations.  In tabulating evictions for a census tract, the underlying expectation might be that for every 100 people who are evicted, we expect 60 people to be white, 20 to be black, 5 API, 3 AIAN, 10 Hispanic, and 2 multi-racial individuals.  Instead, we might observe 55 white evictions, 23 black evictions, 7 API, 5 AIAN, 10 Hispanic, and no multi-racial evictions.  Certainly our observations were different from our expectations, but we need a means of quantifying how different, for which we use the chi-square statistic.
+
+\par A chi-square statistic is calculated as the square of the difference of the observed and the expected counts, divided by the corresponding expected counts, and then summed.
+
+\par The first row is the data we expected.  In this case, our data sums to 100, but it could sum to larger or smaller numbers.  For reasons of numerical stability, none of the expected counts can be 0, and it is recommended in the literature that the expected not be less than 5, but otherwise, expected counts are unrestricted.
+
+\begin{table}
+\centering
+ \begin{tabular}{|c c c c c c c c|}
+  \multicolumn{8}{c}{Table 2: Chi-Square Example} \\
+ \hline
+  Ethnicity & Cauc. & Afr. Amer. & API & AIAN &Hispanic & Multi&\\ [0.5ex] 
+ \hline
+ Expected &50 &20 &7 &8 &10 &5&  \\ 
+ \hline
+  Observed &55 &23 &7 &5 &10 &0&  \\ 
+ \hline
+ (Exp. - Obs.)$^2$ &25 &9 &0 &9 &0 &25&  \\
+ \hline
+ Diff.$^2$ / Exp. &.5 &.45 &0 &1.125 &0 &5 &7.075  \\
+ \hline
+\end{tabular}
+\caption{Chi-Square Example}
+\label{tab:table2}
+\end{table}
+
+\par The second row of the table is what we actually observe.  The observed counts should sum to the same value as our expected counts (100 in our case), but it need not be the case that all of the observed data be non-zero or even as large as 5.
+
+\par Some of our observations are greater than the expectation, while others are less than the expectation.  In the third row, taking the square of these differences, we are partially measuring the magnitudes of the differences between observation and expectation, and not allowing for some differences being positive and some being negative to zero out our measurement of deviation.
+
+\par The fourth row of the table scales the third row by the value of the expectation.  When we have larger initial expectations, it is reasonable to expect larger fluctuations, but the squared differences are in turn diminished more by the greater initial expectation, putting everything on a similar scale.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in]{diagrams/f23-chi-squareexample.jpg}
+\caption{Sample Chi-Square}
+\label{fig:figure23}
+\end{wrapfigure}
+
+\par With our statistic in hand, 7.075 in this case, how do we make sense of what it means?  This statistic is a chi-square statistic, and is intended to be compared against a chi-square distribution.  To do so, we first need to calculate the number of degrees of freedom in creating our distribution.  As we saw above, our expected counts were taken out of 100.  Similarly our observations were also taken out of 100.  In this case, knowing 5 of the ethnic categories was enough to deduce what the 6th category was.  Because of this, we had 5 degrees of freedom (had the number of observations not been fixed at 100, we would have had an additional degree of freedom as we would need to know all six counts to calculate our statistic).
+
+\par Looking at the chi-square distribution with 5 degrees of freedom, we see the distribution itself in black.  If our observations had exactly matched the expected counts, all of the differences would have been zero, and the chi-square statistic would also be zero.  As the observations deviate more from the true expectation, the squared differences get larger, and so does the test statistic.  What the distribution above shows is that the most likely event to occur is a chi-square statistic of about 3, some deviation from expectation, but not a lot.  The further to the right of the graph, the less likely those statistics are to be observed.  The measure of an observation's likelihood is the sum of all the probability densities representing outcomes more extreme than what we observed, the shaded red area.  Summing that area of probabilities, in this case, we get a probability of about .215 of seeing an observation as extreme or more extreme than the one we saw.  If 21\% of situations deviate more from our expectation than the one we saw, with a 10\% threshold or less, you would not reject the hypothesis that our observation was a random observation from our expected distribution; our observation is a result that is sufficiently likely to occur by chance.
+
+\par Bootstrap analysis.  The fundamental idea behind the bootstrap is that we will use our observed data as a substitute for the actual unknown distribution, and then use a sampling distribution of a desired parameter to create an estimate of the behavior of that parameter.  This aspect is known as the "plug-in principle."  In trying to create a sampling distribution for parameters, we will plug in our observed data for the original distribution\citep{BOOK:1}.   After assuming that our data mimics properties of the underlying distribution, we begin to create new samples, of equal size to the original data set, with replacement, from our observations.  Just as repeated sampling from the underlying distribution would show variation in test statistics, we anticipate similar variation in sampling from the observed data.  From the variation, we calculate percentiles on the resampled test statistics and use those for our confidence intervals.  The 2.5 percentile and 97.5 percentile of the resampled statistics serve as the bounds for the 95\% confidence interval for a statistic (and similarly for confidence intervals with greater or lesser degrees of certainty).  Because we are explicitly looking for the variation in calculating our test statistics, this brings us to the second principle of the bootstrap, Monte Carlo simulation.  In order for the bootstrap to work, we must use sampling with replacement\citep{BOOK:1}.  Just as sampled values can repeat from the underlying distribution, they must also be able to repeat in the resampled distribution.  If we didn't use sampling with replacement, there wouldn't be any variance in the test statistic, and we wouldn't be able to create confidence intervals or otherwise gain insight from our data.
+
+\par Restrictions of the bootstrap.  As noted by Chihara and Hesterberg, “1000 bootstrap samples are enough for rough approximations, but more are needed for greater accuracy.” \citep{BOOK:3}  They go on to note that while 200 to 1000 bootstrap samples were recommended by Efron and Tibshirani when they used the bootstrap in 1993, in a more modern era of computing, on the order of 10,000 to 15,000 bootstrap samples are desired if you want the 95\% confidence intervals with 2.5\% percent tails to be accurate to within .25\% \citep{BOOK:3}.  Fortunately, in our case, for any intervals we construct, the observations in question are so far beyond even the 1\% or .1\% confidence levels that we can safely get by with 1000 samples.
+
+\par What does all this extra work get us; why not use classical methods?  In the classical method, avoiding all the extra computation, we could assume that the underlying evictions numbers for each category are roughly normal over a period of time, find the sample standard deviation, and then calculate a p-value based different observed samples.  There are a few problems with this.  The first problem is that our distribution may not be normal, and in fact it is not.  As well, the distribution we are concerned with may not be symmetric, which again, it is not.  So, using a normal approximation may give a reasonable approximation, but ideally we would use something better.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in]{diagrams/f24-binomial.jpg}
+\caption{Sample Binomial Distribution}
+\label{fig:figure24}
+\end{wrapfigure}
+
+\par As a better approximation of what our eviction rates look like, we can use a binomial model if we want a 1 vs. other or 1 vs. many categorization.  Or we can use a multinomial model to deal with multiple classifications at the same time, although still the estimate of average predictions classically comes with a normal approximation to the associated confidence intervals.  To the right, we can see that given data with a mean of .9, the 95\% confidence interval for where that mean might have fallen is symmetric around our observation, .9.  This is usually reasonable, except it predicts that an average eviction rate in this hypothetical case may be greater than 100\%.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in]{diagrams/f25-binomial-boot-example.jpg}
+\caption{Sample Bootstrap Binomial Confidence Intervals}
+\label{fig:figure2s}
+\end{wrapfigure}
+
+\par Looking through the literature, there are numerous ways to correct for this problem.  Several different tests deal with this issue, but possibly the simplest is to use the bootstrap.  In this case, the sample was 40 points, with 90\% of them being “successful trials.”  We can resample from those points, take means of the resamples, and then construct the bootstrap confidence interval.  Seen in figure 3, you can observe that the sample means are not symmetric around .9, although that is still the mode of the sample means.  However, the greatest observed mean is 1, so no predictions are too high.  The lowest 2.5\% mark is .8, with the 97.5\% mark being .975.  The range of sample means are not symmetric around the mode, and this is reflected in the 95\% bootstrap confidence interval.
+
+\par As noted previously, this type of result could be obtained with more sophisticated confidence interval construction methods, but solving this problem leads us to a second property.  Our data only have estimates of probabilities and not actual counts.  What do we do if our data predicts success with .6 probability, and failure with .4 probability?  If we look at the majority probability in each case to determine counts, what should look like a binomial distribution with probability .6 of success suddenly looks like a discrete uniform distribution with probability 1.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in]{diagrams/f26-chi-squareexample.jpg}
+\caption{Sample Thresholding Breakdown}
+\label{fig:figure26}
+\end{wrapfigure}
+
+\par Alternatively, if we accumulate all the probabilities and construct a single multinomial from the summed probabilities (likely rounded to the nearest integer), this also fails to capture the behavior of the data.  As an example, if 5 people are predicted white with probability .99, and black with probability .01, while 5 more are predicted white with probability .01, and black with probability of .99, in actuality, we expect 5 white and 5 black data points with almost no variance.  If we sum probabilities and use a binomial distribution, we end up with the same expected counts, but a much higher variance of the distribution.  Looking at the visual, the conglomerate multinomial, or binomial in this case, has values and probabilities represented by the the black dots.  In contrast, resampling from the probabilistic representation of individuals yields a distribution with much tighter variance, and is representative of the actual beliefs.
+
+\par In the different possible approaches to handling this data, we see that the classical assumptions break down.  Even in trying to force the data to behave in a way that fits into the classical analyses, the techniques break in one way or another.  Fortunately, the bootstrap does not share these issues, and because it only requires several minutes of computational power, we opted for bootstrap resampling through the predominance of our analysis.
+

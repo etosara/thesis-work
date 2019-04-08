@@ -1,0 +1,260 @@
+\chapter{Data Analysis}
+\label{chap:dataanalysis}
+What is the goal?  We are trying to find out if there is a difference between the underlying populations of the locations, and the ethnicities of the people being evicted.  Do any of the ethnicities get evicted at rates greater or less than their relative populations, and if so, which ethnicities, by how much, and is it statistically significant?
+
+\par On our first pass through the data, as a default baseline, we assume that the underlying distribution of ethnicities of evictions should model after the inherent distribution of the census tract.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f1-tractfreqhist.jpg}
+\caption{Census Tract Frequency Histogram}
+\label{fig:figure1}
+\end{wrapfigure}
+
+% [FIGURE 1]
+How are evictions spread out?  Are the percentages persistent across districts, or are there some districts which have lots of evictions while others have just a few? It turns out that most districts have very few evictions, while others have a multitude.  The first 100 tracts have no more than 2 evictions, while the tracts with the most evictions have somewhere between 200 and a little more than 1000 evictions over our time span.
+
+\par Returning to baseline analysis, the first test is to run through the data and ensure that our reasoning is sound and code is functioning as expected.  Iterating through our data frame, we sum all of the baseline predictions for probabilities within each tract.  Parallel to this, we create a multinomial sample for each tract specification.  Taking the square of the difference between the observed and expected samples, and then dividing by the expected counts, we expect to see a chi-square distribution with 5 degrees of freedom.  Because we know how many samples we are taking, and because we have six categories, the last category is never a free variable.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f2-sampledchi.jpg}
+\caption{Simulated Chi-Square Samples}
+\label{fig:figure2}
+\end{wrapfigure}
+
+% FIGURE 2
+\par Notice we get strong agreement between the simulated values we sampled and the actual chi-square distribution.  Despite that there are thousands of underlying components to the simulation, they are functioning as a cohesive singular multinomial, and in turn realistically generating the appropriate empirical chi-square distribution.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f3-naivepval.jpg}
+\caption{Chi-square with 5 degrees of freedom}
+\label{fig:figure3}
+\end{wrapfigure}
+
+% FIGURE 3
+\par Using this underlying distribution, we get a preliminary estimate on whether the observed distribution we are using to simulate with matches that of the chi-square.  Summing the observed probabilities over the entire data set and creating the chi-square value, we get a chi-square value of 5990.  Turning this into a p-value relative to the chi-square with 5 degrees of freedom, we get a p-value of 0, representing that 0 percent of the time we would expect to see observations as extreme or more extreme than we observed simply by random chance.  Given that this is a very extreme observation, initially, we are inclined to think that there may be a difference between the underlying demographics and the evicted population.
+
+
+\par Rather than just accepting that the sum of the probabilities of individuals gives us a good estimate of the population and using the classical chi-square test, we also have the sampling distribution available to us.  This next test is iterating over our data set a hundred times, sampling from the naive estimate of ethnicity from each data point, summing the results, finding the corresponding chi-square value, and then repeating.  These results should match with what we saw previously.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f4-sampledchi.jpg}
+\caption{Observation Generated Chi-Square Samples}
+\label{fig:figure4}
+\end{wrapfigure}
+
+% FIGURE 4
+\par The overlaid distribution is a normal curve with the same mean and standard deviation as our bootstrap results.  What we see is that the mean of the samples is very nearly the original chi-square value we found without sampling.  We also get a range of values which show what might have happened with the same underlying ethnicities, given random chance.  This gives a way to create error estimates on the original 5990 chi-square value.  The 2.5\% and 97.5\% marks on the bootstrap samples give us a 95\% confidence interval of [5870, 6170] on the chi-square estimate.  This translates to a range of possible p-values, with the largest p-value being observed at the low end chi-square value of 5870, yielding a p-value orders of magnitude below any cut-off threshold, and functionally identically 0.  Our bootstrap agrees with the classical test that our eviction data is probably fundamentally different from the underlying demographics.
+
+\par One possible issue with this analysis is that we’re doing our analysis across all of the census tracts at the same time.  Does the analysis demonstrably change if we were to do something like calculate chi-squares values within each census tract and sum for a total value.  Because we would not be strictly calculating chi-square values, but rather sums of chi-square values if we iterate over every tract, we’ll need to compare with something different.  Parallel to the computation of chi-square sums with the observed probabilities, we’ll also compute chi-square sums with the expected probabilities.  Taking the difference, if the two sets of probabilities generate the same outcome, differences across resamples should be both positive and negative, and generally symmetric across the y-axis.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f5-chidiff.jpg}
+\caption{Observation vs Expected tract Chi-sums}
+\label{fig:figure5}
+\end{wrapfigure}
+
+% FIGURE 5
+\par Instead of seeing something which is symmetric around the y-axis, what we see is something that is centered around about 15,400.  Looking up and down two standard deviations, we see that all of our statistics fall far from the origin, and there is no expectation that this statistic is ever negative.  Our 95\% confidence interval spans from about 14,750 to a little under 16,500, and by no reasonable threshold is our expected difference near 0.
+
+\par Of note, summing the chi-square values over the individual tracts causes our test statistics to be significantly larger than they were when we created just one chi-square.  Considering the difference between the two techniques, the former would be larger on account of observed counts being significantly different from expected counts (large numerators being squared).  The latter, the sums of chi-squares of small districts, will be large because we eventually divide by expected counts, and expected counts can be very small if you have just one or two data points in a census tract.  The problem is such an issue that there are times when there are no expected counts in calculating a chi-square value, and the calculation simply can’t be done.  To deal with this issue, I added a small .01 probability to the expected counts to make sure there was never division by zero.  Unfortunately, the resultant division still magnifies any calculated numerator by a factor of 100.
+
+
+
+% FIGURE 6
+\par Hoping to avoid the issue of numerical instability and dividing by near-zero numbers, I repeated the process, but created a new test statistic which was the sum of the squares of the difference between the observed and expected counts, all summed over the available tracts.  The result is radically increased test statistics.  Despite not dividing the chi-square numerators, there are enough large terms not being diminished 
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f6-chidiffnodiv.jpg}
+\caption{Observation vs Expected tract Chi-sums}
+\label{fig:figure6}
+\end{wrapfigure}
+
+\setlength{\parindent}{0cm} such that the test statistics are still exceedingly large.  Regardless, performing the comparison of distributions in this manner, and eliminating the issue of numerical instability, we get the same conclusion as all the previous tests.  The likelihood of the eviction data following the same distribution as the population is negligible.  Here we have a mean around 6.16 million with a standard deviation of about 52 thousand.  The associated 95\% confidence interval runs from about 6.05 million to 6.25 million.  We believe the two distributions are different.
+
+\setlength{\parindent}{.5cm}
+\par Having tried resampling this data in several different ways, the answer is consistently that the function we are using for modeling the evictions is distinct from the function modeling the underlying demographics.  This is something we wanted to confirm, but we’re also interested in what this means in terms of the different ethnicities.  It’s completely plausible that both models stem from similar underlying predictions, just that one model might be higher variance than the other, yielding larger chi-square values.  To solve this mystery, we’ll use resampling and bootstrapping to estimate the balance of evictions relative to the expectation for each ethnicity.
+
+\par First method, to reduce computation time, we sample the straight probabilities, resampling across the entire data set.  What should we expect to see?  Given the underlying population, we should expect to see, out of every 111,000 evictions, 63,679 Caucasian evictions, 16,959 African American evictions, 1,880 Asian or Pacific islander evictions, 42 American Indian or Alaskan native evictions, 27,822 Hispanic evictions, and 685 multi -racial evictions.  What we actually see is something far different.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f7-white-evict1.jpg}
+\caption{Relative Caucasian Evictions}
+\label{fig:figure7}
+\end{wrapfigure}
+
+% FIGURE 7
+\par Starting with Caucasian evictions, the model predicts that Caucasians will be evicted on average about 8570 times more often than they should given their presence in the population.  The data suggests that, on average, this is an over-eviction rate of 13.45\%, and the 95\% confidence interval suggests that we should expect the eviction rate to be between 13.15\% and 13.75\% over what we expect for the demographics.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f8-black-evict1.jpg}
+\caption{Relative African-American Evictions}
+\label{fig:figure8}
+\end{wrapfigure}
+
+% FIGURE 8
+\par Looking at African American evictions, we see something different occurring.  Relative to the underlying demographics, the model suggests that African Americans are under-evicted by 3480 for every 111,000 evictions.  The data suggests that, on average, this is an under-eviction rate of 20.51\%, and the 95\% confidence interval suggests that we should expect the eviction rate to be between 19.8\% and 21.1\% under what we expect for the demographics.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f9-Relative-eviction-panel1.jpg}
+  \end{center}
+  \caption{Basic Eviction Panel}
+\label{fig:figure9}
+\end{figure}
+
+% FIGURE 9
+\par Looking more quickly at the remaining 4 classes:  We see that Caucasian evictions rates are well over their expected value.  African American, Asian Pacific Islander, American Indian and Alaskan Native, and Multi race evictions are all firmly below zero and registering as under-evicted.  Hispanic evictions are above expectation, but are not registering as different from zero by an egregious margin like all the other ethnicities.  The mean for Hispanic evictions was about 700, with a 99\% confidence interval ranging from about 460 to 935.  Despite that this corresponds to an over-eviction rate between just 1.6\% and 3.3\% over expectation, this is still a statistically significant over-eviction.
+
+% FIGURE 10
+Given that the expectation, from public defenders, was that most of these predictions would be the negative of what the model suggested, I thought it worthwhile to try running the same simulations, but this time enforcing that each tract be used in the resampling.  Previously, the resampling allowed for resampling which might not represent all the tracts, especially where there had only been a few evictions, and possibly therein bias toward Caucasian evictions in a state which is predominantly Caucasian.  Running the simulation while respecting which tracts the data come from yields the same results we observed above.  Caucasians and Hispanics are evicted at a rate greater than than their underlying demographics, while the rest are under-evicted.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f10-Relative-eviction-panel1s.jpg}
+  \end{center}
+  \caption{Tract focused Eviction Panel}
+\label{fig:figure10}
+\end{figure}
+
+\par The next thing to consider is that maybe different ethnicities are biased in different parts of the state.  We proceed to break down the the state into different pieces, Western, Central, and Eastern, roughly in line with the regions covered by the courts.  We also further subdivide the Eastern region to look at just metro Boston.
+
+% FIGURE 11
+\par Starting with the Eastern court:  In the Eastern district, we see that Whites are over-evicted, and every other ethnicity is under-evicted.  All of these results yield 99\% confidence intervals well outside a range including zero.  The estimated range on Hispanics gives the closest results to not being decisively under or over with a 99\% confidence interval ranging from 1.5\% to .7\% under the expected rates of evictions.  Otherwise, all eviction rates are expected to be more polarized.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f11-Relative-eviction-panel-ce.jpg}
+  \end{center}
+  \caption{Basic Eviction Panel - Eastern Court}
+\label{fig:figure11}
+\end{figure}
+
+% FIGURE 12
+\par Next up is the Central court: here, Caucasian and Hispanic eviction counts suggest they are over-evicted.  In this case, the Hispanic evictions 99\% confidence interval range from .2\% to .9\% over-evicted.  It is a statistically significant rate of over-eviction, although much less than the Caucasian rate of over-eviction closer to 4\%.  All other estimations are more than 4\% below the expectation for the demographics.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f12-Relative-eviction-panel-cc.jpg}
+  \end{center}
+  \caption{Basic Eviction Panel - Central Court}
+\label{fig:figure12}
+\end{figure}
+
+% FIGURE 13
+\par One more court, the Western court: here again we see Caucasian and Hispanic eviction rates higher than the local demographics.  All probabilities testing whether these distributions could be aligned with the underlying demographics are again essentially zero as the 99\% confidence lie completely on one side or the other of zero, not approaching zero from either side.  Noteworthy in the Western courts is that the Hispanic over-eviction rate is estimated at 2.8\% to 3.6\%, higher than Caucasian estimated rate of 2.5\% to 2.9\%.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f13-Relative-eviction-panel-cw.jpg}
+  \end{center}
+  \caption{Basic Eviction Panel - Western Court}
+\label{fig:figure13}
+\end{figure}
+
+% FIGURE 14
+\par As a last analysis akin to the stratification by court, because I was told by a lawyer in Boston that evictions were overwhelmingly minorities, I ran the test on just a subset of the eastern court district which represents Metro Boston.  As to be expected, the results followed very closely to the Eastern court results, with all confidence intervals being far from 0, and Caucasians and Hispanics were again showing over-eviction.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f14-Relative-eviction-panel-cm.jpg}
+  \end{center}
+  \caption{Basic Eviction Panel - Boston}
+\label{fig:figure14}
+\end{figure}
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in,height = 1.4in]{diagrams/f15-plaintiff-eviction-histogram.jpg}
+\caption{Plaintiff Eviction Histogram}
+\label{fig:figure15}
+\end{wrapfigure}
+
+% FIGURE 15
+\par Having stratified by court system/geography, there is the question of whether there is bias in evictions based on plaintiffs.  For this next analysis, I binned the plaintiffs by type.  Some plaintiffs showed up in court for a mere 1 eviction.  This was by far the norm.  On the high end, there were plaintiffs who evicted more than 1000 residents.  To see what the empirical distribution is, we draw a histogram of the plaintiff eviction rate counts, with a log scale on the y-axis.  Two evictions is the 50th percentile of plaintiffs, and four evictions is the 75th percentile.
+
+% FIGURE 16 - 19
+\par The next tests on this page and the next, show eviction rates for plaintiffs below the 90th percentile, between the 90th and 95th, between the 95th and 99th, and above the 99th percentile.  The first two plaintiff classes show the enduring pattern that Caucasians should be over-evicted.  However, the last two plaintiff classes show that Caucasians and Hispanics, are over-evicted.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f16-Relative-eviction-panel-p1.jpg}
+  \end{center}
+  \caption{Category 1 Plaintiff Eviction Panel}
+\label{fig:figure16}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f17-Relative-eviction-panel-p2.jpg}
+  \end{center}
+  \caption{Category 2 Plaintiff Eviction Panel}
+\label{fig:figure17}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f18-Relative-eviction-panel-p3.jpg}
+  \end{center}
+  \caption{Category 3 Plaintiff Eviction Panel}
+\label{fig:figure18}
+\end{figure}
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f19-Relative-eviction-panel-p4.jpg}
+  \end{center}
+  \caption{Category 4 Plaintiff Eviction Panel}
+\label{fig:figure19}
+\end{figure}
+
+\par So far, the model has not been able to lend credence to the sentiment expressed by local trial lawyers.  Wondering what effects I might not be accounting for, I realized that the underlying baseline being used for comparison is the ethnic breakdown of the local population.  But, the local population and the local renting population are noticeably different.  The average Caucasian rate of home ownership, as opposed to renting, is listed as 72.5\%.  In contrast, African American, Asian and Pacific Islanders, American and Alaskan natives, Hispanics, and Multi-race citizens have average home ownership rates of 41.9\%, 57\%, 57\%, 46\%, and 57\% ~\citep{website:15}.  Having established that the different variations on our resampling all give demonstrably the same results, and because generating a sample from each data point is more interpretable, we’ll restrict our reanalysis to use only the more routine tools.
+
+\begin{wrapfigure}{r}{2in}
+\includegraphics[width=2in]{diagrams/f20-naivepval.jpg}
+\caption{Rental adjusted Chi-square assessment}
+\label{fig:figure20}
+\end{wrapfigure}
+
+% [FIGURE 20]
+\par Adjusting for the new rental population, we check that our observed data still disagrees with the underlying rental population.  Because our chi-square statistics still match well with the corresponding distribution with 5 degrees of freedom, that serves as the basis for our p-value calculation.  The p-value is close enough to zero that Python rounds the calculation to zero, and we believe that the the rental population and the eviction population are fundamentally different.  The next question is, are revised rental ethnic proportions different from the eviction proportions, or again, are we witnessing a function that is markedly different for a reason such as its variance?  We rerun the same simulations and highlight the trends.
+
+
+\par As in previous analysis, we see that Caucasians are modeled as being over-evicted relative to the rental population.  All other ethnicities are under-evicted relative to their rental proportions.  The results here were the same across all three major court regions and the specially sampled metro Boston region.  Testing not by region but by plaintiff type, the results were again similar to what they had been in the original analysis.  Either as above, Caucasians were over-evicted, or in the high eviction plaintiff stratification, Hispanics as well as Caucasians were both over-evicted.  Hispanics are the only ethnicity with an alternating eviction frequency.  Note that they are under-evicted with 99\% confidence level 7.5\% to 8.8\% when looking at geographical regions, but are over-evicted by 1.1\% to 1.6\% if the data is divided by plaintiff class and we look at high eviction plaintiffs.
+
+\par At this point, a question was if the model could predict what was being anecdotally observed in the court.  Because the goal is to determine difference from the underlying population, any formula which combines the location ethnicity probabilities with the surname ethnicity probabilities is inherently biasing surname data to be more like the location data.  Wondering about this, I reran the tests using the surname probabilities without using a Naive Bayes update with the location data to see what would turn up.  If this provided the same results as previously, I would think the model had already predicted everything that it might be capable of predicting.  Somewhat expectedly, we once again see that the eviction population is registering as distinct from the underlying rental population.  The chi-square is even greater, and the p-value is even smaller.  The two distributions are even more distinct than in previous analysis.  Given that the surname ethnicities are more dissimilar to the baseline geographic probabilities than any mixture of surname and geographic probabilities to the same baseline, this result was to be expected.
+
+\par Measuring the relative frequency of evictions for each ethnicity, we see new behavior.  In the Eastern Housing district, Caucasian, American Indian and Alaskan native, and multi racial citizens all experience statistically significant over-eviction.  In the Central Housing Court, African American, American native, and multi-racial citizens experience statistically significant over-eviction.  In the Western Housing Court, it is Caucasian, Asian and Pacific Islander, American Indian and Alaskan native, and multi-racial people who experience statistically significant over-eviction.
+
+\par Having seen a change in the analysis, the question goes to what is the appropriate way of combining the underlying demographics of a region and what is gleaned from an individual’s last name.  In the surname ethnicity data, the census publishes the top 220 thousand last names, the associated probabilities, and then the number of people with that particular last name.  Looking at degenerate cases, if a last name was exceedingly rare, if only one person had that last name, when combining the last name and geographic information about an individual, it would make complete sense to use only the last name data probability estimates.  In contrast, if there was a last name which everyone had, the last name information would become uninformative, and the location data would remain as the best and sole indicator of individual ethnicity.
+
+\par As a final addendum to the above logic, surname predictions are known to be particularly strong indicators of ethnicity in Hispanic and Asian Pacific Islander populations.  Rerunning the analysis, clustering these two populations together and comparing them with the remaining ethnicities, we see that with the surname ethnicities compared to the location ethnicities, even for the cases when surname should be by far a better indicator, we do not observe that minorities are disparately impacted.
+
+\par All of the sampling and bootstrap analysis above has been using expected counts for a census tract as the baseline to compare to.  However, a plausibly more appropriate baseline to compare to factors in the relative population of an area.  Sum the absolute counts of the different ethnicities in each of the census tracts for a region (such as the Eastern housing), and resample using the proportion given the absolute counts as our baseline.  The assumption here is that within a zip code, town, or court district, eviction counts should vary randomly from census tract to census tract, but seeing more evictions in one tract than another is likely influenced by chance and population more than any systematic process of intentionally evicting people within a particular census tract.  Therefore, we should rerun the preceding analyses and use the ratios of the absolute populations over a geographic region.  We will skip the chi-square analysis, it again shows distinct difference between expectation and observation, and go straight to the bootstrap, repeating for court regions.
+
+% [FIGURE 21]
+\par There are two ways to cut this analysis.  One, assume that within a region, location of eviction is random, and the data points in one tract may be representative of other data points in nearby tracts.  Running this analysis, we see something very different from what we had seen up until this point.  Looking at 99\% confidence intervals, it looks like Caucasian, API, AIAN, and Multi-race individuals are under-evicted.  Balancing that out, African Americans and Hispanics are over-evicted with confidence intervals spreading from 37.5\% to 42.3\% for African Americans, and 3.2\% to 8.9\% for Hispanics.
+
+\begin{figure}
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 2.5in]{diagrams/f21-standard-new-baseline-east.jpg}
+  \end{center}
+  \caption{Population Adjusted Eviction Panel - Bootstrap}
+\label{fig:figure21}
+\end{figure}
+
+
+The second way to cut this, is to assume that within any tract, the evictions in that tract are particular to that specific location.  In this case, we resample from empirical distribution, and eviction frequencies are maintained within a tract.  In this case, even with the stricter sampling method, we see almost identical results.  Most ethnicities are under-evicted, with the two exceptions of African Americans, who are evicted at a rate within a 99 percent confidence interval of 38.4\% to 41.2\%, and Hispanics who are evicted at a rate within a 99 percent confidence interval of 4.4\% to 7.6\%.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=\textwidth,height = 3in]{diagrams/f22-empirical-new-baseline-east.jpg}
+  \end{center}
+  \caption{Population Adjusted Eviction Panel - Empirical Distribution}
+\label{fig:figure22}
+\end{figure}
+
+Looking at both of the other major court districts, a similar outcome is observed; some combination of African Americans and Hispanics are over-evicted.  In the Central court district, Hispanics are predicted to be over-evicted between 69\% and 73.5\% of the time.  In the Western court district, African Americans are predicted to be over-evicted between 8.1\% and 14.7\%, with Hispanics being over-evicted a very high 110\% to 113\% more often than expected given local rental populations.
+
+\par Redoing the analysis of plaintiff categories, we see similar trends to the analysis by court region.  Testing an empirical sampling distribution, or running a bootstrap, across three of the four plaintiff categories, we see consistent over-eviction of Caucasian, African American, and Hispanic populations.  In the other category, the medium eviction rate, we see Caucasian and Hispanic over-eviction.  Worth noting, in this analysis, the Hispanic eviction rates are statistically significant, but not at the exceedingly low thresholds we've been observing.  The average Hispanic over-eviction rate is about 3.5\%, but the 99\% confidence intervals range from slightly above or below, depending on the run, 0\% to about 6.6\%.
+
+\par As a final analysis, we test the eviction rates across the entire state and all court districts.  Once again, the empirical sampling within tracts and the bootstrapping across tracts yield similar results.  African Americans and Hispanics are both over-evicted.  African Americans are evicted at a rate about 24\% more often than would be expected, and Hispanics are evicted at a rate about 52\% more often than would be expected.  In contrast, Caucasians were under-evicted by 12\%, Asian and Pacific Islanders by 68\%, American Indians and Alaskan natives by 80\%, and Multi-racial individuals by 75\%.
+
